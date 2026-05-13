@@ -1,0 +1,39 @@
+{
+  "name": "env-manager",
+  "version": "0.1.0",
+  "description": "Local-first environment variable manager for apps, repos, and monorepos.",
+  "type": "module",
+  "bin": {
+    "env-manager": "./bin/env-manager.js"
+  },
+  "scripts": {
+    "prepare": "npm run build",
+    "start": "node ./bin/env-manager.js",
+    "scan": "node ./bin/env-manager.js scan",
+    "doctor": "node ./bin/env-manager.js doctor",
+    "test": "npm run build && node --test dist/test/*.js",
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "env",
+    "secrets",
+    "dotenv",
+    "local-first",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.7.3"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "src",
+    "README.md"
+  ]
+}
