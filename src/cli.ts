@@ -20,14 +20,14 @@ function hasFlag(args: string[], name: string): boolean {
 }
 
 function printHelp(): void {
-  console.log(`env-manager 0.1
+  console.log(`env-file-manager 0.1
 
 Usage:
-  env-manager [--root <path>] [--port <port>] [--no-open]
-  env-manager scan [--root <path>] [--format json]
-  env-manager doctor [--root <path>]
-  env-manager export [--root <path>] [--format json|csv|md] [--out <file>]
-  env-manager watch [--root <path>]
+  env-file-manager [--root <path>] [--port <port>] [--no-open]
+  env-file-manager scan [--root <path>] [--format json]
+  env-file-manager doctor [--root <path>]
+  env-file-manager export [--root <path>] [--format json|csv|md] [--out <file>]
+  env-file-manager watch [--root <path>]
 
 Local-first by design: the UI binds to 127.0.0.1 only.`);
 }
@@ -59,7 +59,7 @@ function printScanSummary(scanResult: ScanResult): void {
 function printDoctor(scanResult: ScanResult): void {
   const severityRank = { critical: 0, warning: 1, info: 2 };
   const issues = [...scanResult.issues].sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
-  console.log(`Env Manager Doctor: ${issues.length} issue(s) found`);
+  console.log(`Env File Manager Doctor: ${issues.length} issue(s) found`);
   for (const issue of issues) {
     console.log(`[${issue.severity}] ${issue.title}`);
     console.log(`  ${issue.message}`);
@@ -149,7 +149,7 @@ export async function runCli(args: string[]): Promise<void> {
   const port = Number(readOption(commandArgs, "--port", process.env.PORT ?? "4783"));
   const server = await startServer({ root, port });
   const url = `http://${server.host}:${server.port}`;
-  console.log(`Env Manager running at ${url}`);
+  console.log(`Env File Manager running at ${url}`);
   console.log(`Scanning ${root}`);
   if (!hasFlag(commandArgs, "--no-open")) openBrowser(url);
 }

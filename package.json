@@ -1,18 +1,18 @@
 {
-  "name": "env-manager",
+  "name": "env-file-manager",
   "version": "0.1.0",
-  "description": "Local-first environment variable manager for apps, repos, and monorepos.",
+  "description": "Local-first dashboard for browsing .env files across apps, repos, and monorepos.",
   "type": "module",
   "bin": {
-    "env-manager": "./bin/env-manager.js"
+    "env-file-manager": "./bin/env-file-manager.js"
   },
   "scripts": {
     "prepare": "npm run build",
-    "start": "node ./bin/env-manager.js",
-    "scan": "node ./bin/env-manager.js scan",
-    "doctor": "node ./bin/env-manager.js doctor",
+    "start": "node ./bin/env-file-manager.js",
+    "scan": "node ./bin/env-file-manager.js scan",
+    "doctor": "node ./bin/env-file-manager.js doctor",
     "test": "npm run build && node --test dist/test/*.js",
-    "build": "tsc -p tsconfig.json && node -e \"import('fs').then(f => { const src = './src/ui'; const dst = './dist/src/ui'; f.cpSync(src, dst, { recursive: true }); })\""
+    "build": "node -e \"import('fs').then(f => f.rmSync('./dist', { recursive: true, force: true }))\" && tsc -p tsconfig.json && node -e \"import('fs').then(f => { const src = './src/ui'; const dst = './dist/src/ui'; f.cpSync(src, dst, { recursive: true }); })\""
   },
   "keywords": [
     "env",
@@ -23,6 +23,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Anil567849/env-file-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Anil567849/env-file-manager/issues"
+  },
+  "homepage": "https://github.com/Anil567849/env-file-manager#readme",
   "engines": {
     "node": ">=18.18"
   },
@@ -32,8 +40,9 @@
   },
   "files": [
     "bin",
-    "dist",
+    "dist/src",
     "src",
+    "HOW-IT-WORKS.md",
     "README.md"
   ]
 }

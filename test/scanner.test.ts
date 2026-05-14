@@ -6,7 +6,7 @@ import path from "node:path";
 import { scanWorkspace } from "../src/core/scanner.js";
 
 async function fixture() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "env-manager-"));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "env-file-manager-"));
   await fs.mkdir(path.join(root, "apps", "web"), { recursive: true });
   await fs.writeFile(path.join(root, "package.json"), JSON.stringify({ workspaces: ["apps/*"] }), "utf8");
   await fs.writeFile(path.join(root, ".gitignore"), ".env\n.env.*\n!.env.example\n", "utf8");

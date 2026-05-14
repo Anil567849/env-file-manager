@@ -1,8 +1,8 @@
-# Env Manager
+# Env File Manager
 
 A small local-first dashboard for browsing `.env` files across apps and environments.
 
-Env Manager scans a repo or monorepo, groups env variables by app and environment, masks values by default, and shows supported metadata like owner, provider, dashboard link, account, rotation policy, and source file.
+Env File Manager scans a repo or monorepo, groups env variables by app and environment, masks values by default, and shows supported metadata like owner, provider, dashboard link, account, rotation policy, and source file.
 
 <img width="1920" height="1080" alt="Untitled design" src="https://github.com/user-attachments/assets/0ea2b896-b996-4b24-ab7b-ff8c8defa91e" />
 
@@ -36,7 +36,7 @@ This package gives you a simple local UI for seeing that structure across multip
 From npm:
 
 ```bash
-npm install -D env-manager
+npm install -D env-file-manager
 ```
 
 Local development from this repo:
@@ -51,33 +51,33 @@ npm start
 Start the dashboard in the current project:
 
 ```bash
-npx env-manager
+npx env-file-manager
 ```
 
 Scan another project:
 
 ```bash
-npx env-manager --root /path/to/project
+npx env-file-manager --root /path/to/project
 ```
 
 Run without opening a browser:
 
 ```bash
-npx env-manager --no-open --port 4783
+npx env-file-manager --no-open --port 4783
 ```
 
 Useful CLI commands:
 
 ```bash
-npx env-manager scan
-npx env-manager export --format json
-npx env-manager export --format csv --out env-report.csv
-npx env-manager watch
+npx env-file-manager scan
+npx env-file-manager export --format json
+npx env-file-manager export --format csv --out env-report.csv
+npx env-file-manager watch
 ```
 
 ## Metadata
 
-Env Manager supports metadata only through `# @field value` comments placed directly above the env key:
+Env File Manager supports metadata only through `# @field value` comments placed directly above the env key:
 
 ```env
 # @provider OpenAI
@@ -118,7 +118,7 @@ Each app has multiple `.env.*` files so you can see app navigation plus `local`,
 
 ## Security
 
-Env Manager is local-first:
+Env File Manager is local-first:
 
 - the server binds to `127.0.0.1`
 - secrets are not uploaded

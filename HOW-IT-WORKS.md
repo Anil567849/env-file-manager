@@ -1,6 +1,6 @@
-# Env Manager Flow
+# Env File Manager Flow
 
-This shows what happens when an existing project adds the `env-manager` npm package.
+This shows what happens when an existing project adds the `env-file-manager` npm package.
 
 ```txt
 Existing Big Project
@@ -22,7 +22,7 @@ Existing Big Project
 1. Install package
    |
    v
-npm install -D env-manager
+npm install -D env-file-manager
 ```
 
 ```txt
@@ -43,16 +43,16 @@ DATABASE_URL=postgres://...
 ```
 
 ```txt
-3. Start Env Manager
+3. Start Env File Manager
 
-npx env-manager
+npx env-file-manager
         |
         v
 Local server starts on 127.0.0.1
 ```
 
 ```txt
-4. Env Manager scans the project
+4. Env File Manager scans the project
 
 Project root
    |
@@ -86,7 +86,7 @@ Build local scan result
 ```txt
 5. Browser dashboard shows
 
-Env Manager UI
+Env File Manager UI
 ------------------------------------------------
 Apps              Environments        Table
 ------------------------------------------------
@@ -136,10 +136,10 @@ Full Flow
 Developer installs package
         |
         v
-Runs npx env-manager
+Runs npx env-file-manager
         |
         v
-Env Manager scans local repo only
+Env File Manager scans local repo only
         |
         v
 Finds .env files across apps
@@ -159,4 +159,4 @@ finds owner/dashboard/source file,
 and rotates or manages secrets faster
 ```
 
-Env Manager does not sync to a cloud service or upload secrets. It reads the existing project locally and gives a dashboard over the `.env` files.
+Env File Manager does not sync to a cloud service or upload secrets. It reads the existing project locally and gives a dashboard over the `.env` files.

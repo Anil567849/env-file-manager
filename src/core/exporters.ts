@@ -36,7 +36,7 @@ export function exportCsv(scanResult: ScanResult): string {
 
 export function exportMarkdown(scanResult: ScanResult): string {
   const lines = [
-    "# Env Manager Scan",
+    "# Env File Manager Scan",
     "",
     `Generated: ${scanResult.generatedAt}`,
     `Root: ${scanResult.root}`,
