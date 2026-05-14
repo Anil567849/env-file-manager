@@ -1,4 +1,4 @@
-# Env File Manager
+# Env File Managers
 
 A small local-first dashboard for browsing `.env` files across apps and environments.
 
