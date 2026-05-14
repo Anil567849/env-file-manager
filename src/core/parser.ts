@@ -34,12 +34,17 @@ function parseAssignment(line) {
   return { key: match[1], rawValue: match[2] ?? "" };
 }
 
+const SUPPORTED_METADATA_KEYS = new Set([
+  "provider",
+  "owner",
+  "account",
+  "dashboard",
+  "createdAt",
+  "rotationPolicy"
+]);
+
 function coerceMetadataValue(value) {
-  const parsed = parseScalar(value);
-  if (parsed.includes(",") && !/^https?:\/\//i.test(parsed)) {
-    return parsed.split(",").map((item) => item.trim()).filter(Boolean);
-  }
-  return parsed;
+  return parseScalar(value);
 }
 
 function normalizeMetadata(input = {}) {
@@ -51,62 +56,54 @@ function normalizeMetadata(input = {}) {
   return metadata;
 }
 
-function parseJsonMetadata(raw) {
-  try {
-    return normalizeMetadata(JSON.parse(raw));
-  } catch {
-    return {};
-  }
-}
-
 export function parseEnvContent(content, filePath = "") {
   const lines = content.split(/\r?\n/);
   const entries = [];
-  const companionMetadata = new Map();
-  const sectionMetadata = new Map();
   let pendingCommentMetadata = {};
-  let activeSectionKey = null;
+  let ignoredSection = false;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const trimmed = line.trim();
 
     if (!trimmed) {
-      activeSectionKey = null;
+      pendingCommentMetadata = {};
+      ignoredSection = false;
       continue;
     }
 
     const metadataComment = trimmed.match(/^#\s*@([A-Za-z][A-Za-z0-9_-]*)\s+(.+)$/);
     if (metadataComment) {
-      pendingCommentMetadata[metadataComment[1]] = coerceMetadataValue(metadataComment[2]);
+      const key = metadataComment[1];
+      if (SUPPORTED_METADATA_KEYS.has(key)) {
+        pendingCommentMetadata[key] = coerceMetadataValue(metadataComment[2]);
+      } else {
+        pendingCommentMetadata = {};
+      }
       continue;
     }
 
-    if (trimmed.startsWith("#")) continue;
-
-    const section = trimmed.match(/^\[([A-Za-z_][A-Za-z0-9_.-]*)\]$/);
-    if (section) {
-      activeSectionKey = section[1];
-      if (!sectionMetadata.has(activeSectionKey)) sectionMetadata.set(activeSectionKey, {});
+    if (trimmed.startsWith("#")) {
+      pendingCommentMetadata = {};
       continue;
     }
+
+    if (/^\[[A-Za-z_][A-Za-z0-9_.-]*\]$/.test(trimmed)) {
+      pendingCommentMetadata = {};
+      ignoredSection = true;
+      continue;
+    }
+
+    if (ignoredSection) continue;
 
     const assignment = parseAssignment(line);
-    if (!assignment) continue;
-
-    if (activeSectionKey) {
-      sectionMetadata.get(activeSectionKey)[assignment.key] = coerceMetadataValue(assignment.rawValue);
+    if (!assignment) {
+      pendingCommentMetadata = {};
       continue;
     }
 
     if (assignment.key.endsWith("__META")) {
-      const baseKey = assignment.key.slice(0, -"__META".length);
-      let rawMeta = assignment.rawValue.trim();
-      while (rawMeta.startsWith("{") && !rawMeta.endsWith("}") && index + 1 < lines.length) {
-        index += 1;
-        rawMeta += `\n${lines[index]}`;
-      }
-      companionMetadata.set(baseKey, parseJsonMetadata(rawMeta));
+      pendingCommentMetadata = {};
       continue;
     }
 
@@ -120,12 +117,5 @@ export function parseEnvContent(content, filePath = "") {
     pendingCommentMetadata = {};
   }
 
-  return entries.map((entry) => ({
-    ...entry,
-    metadata: normalizeMetadata({
-      ...entry.metadata,
-      ...(companionMetadata.get(entry.key) ?? {}),
-      ...(sectionMetadata.get(entry.key) ?? {})
-    })
-  }));
+  return entries;
 }

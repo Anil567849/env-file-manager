@@ -2,7 +2,7 @@
 
 A small local-first dashboard for browsing `.env` files across apps and environments.
 
-Env Manager scans a repo or monorepo, groups env variables by app and environment, masks values by default, and shows useful metadata like owner, provider, dashboard link, source file, and notes.
+Env Manager scans a repo or monorepo, groups env variables by app and environment, masks values by default, and shows supported metadata like owner, provider, dashboard link, account, rotation policy, and source file.
 
 ## Why This Exists
 
@@ -24,7 +24,7 @@ This package gives you a simple local UI for seeing that structure across multip
 - Scans `.env`, `.env.local`, `.env.development`, `.env.staging`, `.env.production`, `.env.test`, `.env.example`, `.env.backup`, and `.env.*`
 - Detects apps from folders like `apps/server`, `apps/mobile`, `apps/frontend-web`, `packages/*`, and `services/*`
 - Shows one dark dashboard with app navigation, env tabs, search, provider filter, and a key/value table
-- Parses metadata from comments, companion `__META` keys, or `[KEY]` sections
+- Parses metadata from supported `# @field value` comments placed directly above an env key
 - Uses explicit provider metadata for filtering and dashboard links
 - Masks secret values until you click `Show`
 - Runs only on `127.0.0.1`
@@ -75,7 +75,7 @@ npx env-manager watch
 
 ## Metadata
 
-Comment metadata is the simplest format:
+Env Manager supports metadata only through `# @field value` comments placed directly above the env key:
 
 ```env
 # @provider OpenAI
@@ -87,26 +87,7 @@ Comment metadata is the simplest format:
 OPENAI_API_KEY=sk-...
 ```
 
-Companion metadata also works:
-
-```env
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_SECRET_KEY__META={"provider":"Stripe","owner":"billing@company.com"}
-```
-
-Section metadata works for longer notes:
-
-```env
-[STRIPE_SECRET_KEY]
-dashboard=https://dashboard.stripe.com/apikeys
-owner=billing@company.com
-account=finance@company.com
-createdAt=2026-05-13
-rotationPolicy=180 days
-tags=billing, payments
-```
-
-Useful metadata fields:
+Supported metadata fields:
 
 - `provider`: OpenAI, Stripe, AWS, Supabase, Resend, etc.
 - `owner`: person or team responsible for the key
@@ -114,8 +95,6 @@ Useful metadata fields:
 - `dashboard`: exact link to rotate or delete the key
 - `createdAt`: when the key was added
 - `rotationPolicy`: how often it should be rotated
-- `billingOwner`: who owns billing for that provider
-- `notes`: extra context for future maintainers
 
 In the UI, metadata is rendered one item per line. URL metadata becomes a `click here` link so rotation is one click away.
 
