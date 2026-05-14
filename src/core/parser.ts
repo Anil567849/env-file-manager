@@ -1,4 +1,19 @@
-function parseScalar(raw = "") {
+export type SecretMetadata = Record<string, string>;
+
+export interface ParsedEnvEntry {
+  key: string;
+  value: string;
+  line: number;
+  filePath: string;
+  metadata: SecretMetadata;
+}
+
+interface EnvAssignment {
+  key: string;
+  rawValue: string;
+}
+
+function parseScalar(raw = ""): string {
   let value = raw.trim();
   const commentIndex = findUnquotedComment(value);
   if (commentIndex >= 0) value = value.slice(0, commentIndex).trim();
@@ -16,8 +31,8 @@ function parseScalar(raw = "") {
     .replace(/\\'/g, "'");
 }
 
-function findUnquotedComment(value) {
-  let quote = null;
+function findUnquotedComment(value: string): number {
+  let quote: string | null = null;
   for (let index = 0; index < value.length; index += 1) {
     const char = value[index];
     if ((char === '"' || char === "'") && value[index - 1] !== "\\") {
@@ -28,18 +43,18 @@ function findUnquotedComment(value) {
   return -1;
 }
 
-function parseAssignment(line) {
+function parseAssignment(line: string): EnvAssignment | undefined {
   const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*)$/);
   if (!match) return undefined;
   return { key: match[1], rawValue: match[2] ?? "" };
 }
 
-function coerceMetadataValue(value) {
+function coerceMetadataValue(value: string): string {
   return parseScalar(value);
 }
 
-function normalizeMetadata(input = {}) {
-  const metadata = {};
+function normalizeMetadata(input: SecretMetadata = {}): SecretMetadata {
+  const metadata: SecretMetadata = {};
   for (const [key, value] of Object.entries(input)) {
     if (value === undefined || value === "") continue;
     metadata[key] = value;
@@ -47,10 +62,10 @@ function normalizeMetadata(input = {}) {
   return metadata;
 }
 
-export function parseEnvContent(content, filePath = "") {
+export function parseEnvContent(content: string, filePath = ""): ParsedEnvEntry[] {
   const lines = content.split(/\r?\n/);
-  const entries = [];
-  let pendingCommentMetadata = {};
+  const entries: ParsedEnvEntry[] = [];
+  let pendingCommentMetadata: SecretMetadata = {};
   let ignoredSection = false;
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -70,6 +85,7 @@ export function parseEnvContent(content, filePath = "") {
       continue;
     }
 
+    // Plain comments break the metadata block so stale metadata cannot leak to later keys.
     if (trimmed.startsWith("#")) {
       pendingCommentMetadata = {};
       continue;
@@ -89,6 +105,7 @@ export function parseEnvContent(content, filePath = "") {
       continue;
     }
 
+    // Legacy companion metadata is deliberately ignored; only `# @key value` is supported.
     if (assignment.key.endsWith("__META")) {
       pendingCommentMetadata = {};
       continue;

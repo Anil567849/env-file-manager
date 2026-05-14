@@ -1,43 +1,42 @@
 import { promises as fs } from "node:fs";
+import type { Dirent } from "node:fs";
 import path from "node:path";
 import { CODE_EXTENSIONS, DEFAULT_ENV_FILENAMES, IGNORE_DIRECTORIES, REPOSITORY_MARKERS } from "./constants.js";
-import { parseEnvContent } from "./parser.js";
-import { getProvider } from "./providers.js";
+import { parseEnvContent, type ParsedEnvEntry, type SecretMetadata } from "./parser.js";
 import { classifySensitivity, fingerprint, maskValue } from "./security.js";
 
-type SecretMetadata = Record<string, string | string[]>;
-
-type ParsedVariable = {
+interface ParsedVariable extends ParsedEnvEntry {
   id: string;
-  key: string;
-  value: string;
-  line: number;
-  filePath: string;
   relativeFilePath: string;
   environment: string;
   repository: string;
   app: string;
   repositoryType: string;
-  metadata: SecretMetadata;
-};
+}
 
-type EnvVariable = ParsedVariable & {
+export interface DuplicateReference {
+  key: string;
+  filePath: string;
+  environment: string;
+}
+
+export interface EnvVariable extends ParsedVariable {
   provider?: string;
   maskedValue: string;
   fingerprint: string;
   usedIn: string[];
   sensitivity: string;
-  duplicates: Array<{ key: string; filePath: string; environment: string }>;
-};
+  duplicates: DuplicateReference[];
+}
 
-type Repository = {
+export interface Repository {
   name: string;
   path: string;
   relativePath: string;
   type: string;
-};
+}
 
-type Issue = {
+export interface Issue {
   id: string;
   severity: "critical" | "warning" | "info";
   type: string;
@@ -45,29 +44,48 @@ type Issue = {
   message: string;
   filePath: string;
   key?: string;
-};
+}
 
-type ScanOptions = {
+export interface ScanOptions {
   root?: string;
   patterns?: string[];
   includeUsage?: boolean;
-};
-
-function metadataString(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value.join(", ");
-  return value;
 }
 
-function isEnvFile(fileName: string) {
+export interface ScanSummary {
+  totalSecrets: number;
+  productionSecrets: number;
+  duplicateSecrets: number;
+  unknownOwnership: number;
+  criticalIssues: number;
+  repositories: number;
+}
+
+export interface ScanResult {
+  generatedAt: string;
+  root: string;
+  repositories: Repository[];
+  variables: EnvVariable[];
+  issues: Issue[];
+  summary: ScanSummary;
+}
+
+interface AppVariableGroup {
+  example: Set<string>;
+  actual: Set<string>;
+  sample: EnvVariable;
+}
+
+function isEnvFile(fileName: string): boolean {
   return DEFAULT_ENV_FILENAMES.has(fileName) || /^\.env\.[A-Za-z0-9_-]+$/.test(fileName);
 }
 
-function environmentFromFile(fileName) {
+function environmentFromFile(fileName: string): string {
   if (fileName === ".env") return "base";
   return fileName.replace(/^\.env\.?/, "") || "base";
 }
 
-async function pathExists(filePath) {
+async function pathExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
@@ -76,12 +94,13 @@ async function pathExists(filePath) {
   }
 }
 
-async function discoverEnvFiles(root: string, customPatterns: string[] = []) {
+async function discoverEnvFiles(root: string, customPatterns: string[] = []): Promise<string[]> {
   const results: string[] = [];
   const customMatchers = customPatterns.map((pattern) => new RegExp(pattern));
 
-  async function walk(directory) {
-    let entries;
+  // Walk the workspace directly so the package works without shelling out to git or ripgrep.
+  async function walk(directory: string): Promise<void> {
+    let entries: Dirent[];
     try {
       entries = await fs.readdir(directory, { withFileTypes: true });
     } catch {
@@ -105,7 +124,7 @@ async function discoverEnvFiles(root: string, customPatterns: string[] = []) {
   return results.sort();
 }
 
-async function findRepositoryRoot(filePath, workspaceRoot) {
+async function findRepositoryRoot(filePath: string, workspaceRoot: string): Promise<string> {
   let directory = path.dirname(filePath);
   while (directory.startsWith(workspaceRoot)) {
     for (const marker of REPOSITORY_MARKERS) {
@@ -118,20 +137,21 @@ async function findRepositoryRoot(filePath, workspaceRoot) {
   return workspaceRoot;
 }
 
-function appFromPath(filePath, workspaceRoot) {
+function appFromPath(filePath: string, workspaceRoot: string): string {
   const relativeDirectory = path.relative(workspaceRoot, path.dirname(filePath));
   if (!relativeDirectory) return "workspace";
   const parts = relativeDirectory.split(path.sep).filter(Boolean);
+  // Monorepos usually organize runnable apps one level under these folder names.
   const groupIndex = parts.findIndex((part) => ["apps", "packages", "services"].includes(part));
   if (groupIndex >= 0 && parts[groupIndex + 1]) return `${parts[groupIndex]}/${parts[groupIndex + 1]}`;
   return parts.slice(0, 2).join("/") || "workspace";
 }
 
-async function discoverRepositories(root) {
-  const repositories = new Map();
+async function discoverRepositories(root: string): Promise<Repository[]> {
+  const repositories = new Map<string, Repository>();
 
-  async function walk(directory) {
-    let entries;
+  async function walk(directory: string): Promise<void> {
+    let entries: Dirent[];
     try {
       entries = await fs.readdir(directory, { withFileTypes: true });
     } catch {
@@ -176,13 +196,13 @@ async function discoverRepositories(root) {
   return [...repositories.values()].sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }
 
-async function buildUsageIndex(root: string, keys: string[]) {
-  const usage = new Map<string, string[]>(keys.map((key) => [key, []]));
+async function buildUsageIndex(root: string, keys: string[]): Promise<Map<string, string[]>> {
+  const usage = new Map<string, string[]>(keys.map((key): [string, string[]] => [key, []]));
   if (!keys.length) return usage;
   const keySet = new Set(keys);
 
-  async function walk(directory) {
-    let entries;
+  async function walk(directory: string): Promise<void> {
+    let entries: Dirent[];
     try {
       entries = await fs.readdir(directory, { withFileTypes: true });
     } catch {
@@ -197,13 +217,14 @@ async function buildUsageIndex(root: string, keys: string[]) {
       }
       if (!entry.isFile() || !CODE_EXTENSIONS.has(path.extname(entry.name))) continue;
 
-      let content;
+      let content: string;
       try {
         content = await fs.readFile(fullPath, "utf8");
       } catch {
         continue;
       }
       for (const key of keySet) {
+        // Keep usage detection conservative: only direct env access patterns count.
         if (content.includes(`process.env.${key}`) || content.includes(`import.meta.env.${key}`) || content.includes(`process.env["${key}"]`) || content.includes(`process.env['${key}']`)) {
           usage.get(key)?.push(path.relative(root, fullPath));
         }
@@ -215,62 +236,27 @@ async function buildUsageIndex(root: string, keys: string[]) {
   return usage;
 }
 
-function summarize(variables: EnvVariable[], repositories: Repository[], issues: Issue[]) {
+function summarize(variables: EnvVariable[], repositories: Repository[], issues: Issue[]): ScanSummary {
   const productionSecrets = variables.filter((variable) => variable.environment === "production").length;
   const duplicateFingerprints = new Set(
     variables
       .filter((variable) => variable.duplicates.length)
       .map((variable) => variable.fingerprint)
   );
-  const providerCounts = new Map();
-  for (const variable of variables) {
-    if (!variable.provider) continue;
-    providerCounts.set(variable.provider, (providerCounts.get(variable.provider) ?? 0) + 1);
-  }
-  const mostUsedProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "None";
-
   return {
     totalSecrets: variables.length,
     productionSecrets,
     duplicateSecrets: duplicateFingerprints.size,
     unknownOwnership: variables.filter((variable) => !variable.metadata.owner).length,
     criticalIssues: issues.filter((issue) => issue.severity === "critical").length,
-    repositories: repositories.length,
-    mostUsedProvider
+    repositories: repositories.length
   };
 }
 
-function buildProviderCards(variables: EnvVariable[]) {
-  const grouped = new Map();
-  for (const variable of variables) {
-    const name = variable.provider;
-    if (!name) continue;
-    if (!grouped.has(name)) {
-      const registry = getProvider(name);
-      grouped.set(name, {
-        name,
-        dashboard: registry?.dashboard,
-        docs: registry?.docs,
-        usageCount: 0,
-        environments: new Set(),
-        owners: new Set()
-      });
-    }
-    const card = grouped.get(name);
-    card.usageCount += 1;
-    card.environments.add(variable.environment);
-    if (variable.metadata.owner) card.owners.add(variable.metadata.owner);
-  }
-  return [...grouped.values()].map((card) => ({
-    ...card,
-    environments: [...card.environments].sort(),
-    owners: [...card.owners].sort()
-  }));
-}
-
-function buildDuplicates(variables: EnvVariable[]) {
+function buildDuplicates(variables: EnvVariable[]): Map<string, EnvVariable[]> {
   const byFingerprint = new Map<string, EnvVariable[]>();
   for (const variable of variables) {
+    // Empty values are placeholders, not duplicate secrets.
     if (!variable.value) continue;
     const entries = byFingerprint.get(variable.fingerprint) ?? [];
     entries.push(variable);
@@ -279,7 +265,7 @@ function buildDuplicates(variables: EnvVariable[]) {
   return byFingerprint;
 }
 
-async function readGitignore(root) {
+async function readGitignore(root: string): Promise<string> {
   try {
     return await fs.readFile(path.join(root, ".gitignore"), "utf8");
   } catch {
@@ -287,7 +273,7 @@ async function readGitignore(root) {
   }
 }
 
-function isEnvIgnored(fileRelativePath, gitignore) {
+function isEnvIgnored(fileRelativePath: string, gitignore: string): boolean {
   const normalized = fileRelativePath.replaceAll(path.sep, "/");
   return gitignore
     .split(/\r?\n/)
@@ -301,9 +287,9 @@ function isEnvIgnored(fileRelativePath, gitignore) {
     });
 }
 
-function buildIssues(variables: EnvVariable[], duplicates: Map<string, EnvVariable[]>, gitignore: string) {
+function buildIssues(variables: EnvVariable[], duplicates: Map<string, EnvVariable[]>, gitignore: string): Issue[] {
   const issues: Issue[] = [];
-  const byApp = new Map();
+  const byApp = new Map<string, AppVariableGroup>();
 
   for (const variable of variables) {
     const duplicateGroup = duplicates.get(variable.fingerprint) ?? [];
@@ -386,6 +372,7 @@ function buildIssues(variables: EnvVariable[], duplicates: Map<string, EnvVariab
     const appKey = `${variable.repository}::${variable.app}`;
     if (!byApp.has(appKey)) byApp.set(appKey, { example: new Set(), actual: new Set(), sample: variable });
     const group = byApp.get(appKey);
+    if (!group) continue;
     if (variable.environment === "example") group.example.add(variable.key);
     else group.actual.add(variable.key);
   }
@@ -409,7 +396,7 @@ function buildIssues(variables: EnvVariable[], duplicates: Map<string, EnvVariab
   return issues;
 }
 
-export async function scanWorkspace(options: ScanOptions = {}) {
+export async function scanWorkspace(options: ScanOptions = {}): Promise<ScanResult> {
   const root = path.resolve(options.root ?? process.cwd());
   const envFiles = await discoverEnvFiles(root, options.patterns ?? []);
   const repositories = await discoverRepositories(root);
@@ -435,14 +422,13 @@ export async function scanWorkspace(options: ScanOptions = {}) {
   }
 
   const usageIndex = options.includeUsage === false
-      ? new Map<string, string[]>(parsed.map((entry) => [entry.key, []]))
+      ? new Map<string, string[]>(parsed.map((entry): [string, string[]] => [entry.key, []]))
     : await buildUsageIndex(root, [...new Set(parsed.map((entry) => entry.key))]);
 
   let variables: EnvVariable[] = parsed.map((entry) => {
-    const provider = metadataString(entry.metadata.provider);
     const base = {
       ...entry,
-      provider,
+      provider: entry.metadata.provider,
       maskedValue: maskValue(entry.value),
       fingerprint: fingerprint(entry.value),
       usedIn: usageIndex.get(entry.key) ?? []
@@ -450,7 +436,7 @@ export async function scanWorkspace(options: ScanOptions = {}) {
     return {
       ...base,
       sensitivity: classifySensitivity(base),
-      duplicates: []
+      duplicates: [] as DuplicateReference[]
     };
   });
 
@@ -473,7 +459,6 @@ export async function scanWorkspace(options: ScanOptions = {}) {
     root,
     repositories,
     variables,
-    providers: buildProviderCards(variables),
     issues,
     summary: summarize(variables, repositories, issues)
   };

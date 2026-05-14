@@ -3,9 +3,10 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { exportScan, sanitizeScanResult } from "./core/exporters.js";
 import { scanWorkspace } from "./core/scanner.js";
+import type { ScanResult } from "./core/scanner.js";
 import { startServer } from "./server/server.js";
 
-function readOption(args, name, fallback) {
+function readOption(args: string[], name: string, fallback: string): string {
   const index = args.indexOf(name);
   if (index >= 0 && args[index + 1]) return args[index + 1];
   const prefix = `${name}=`;
@@ -14,11 +15,11 @@ function readOption(args, name, fallback) {
   return fallback;
 }
 
-function hasFlag(args, name) {
+function hasFlag(args: string[], name: string): boolean {
   return args.includes(name);
 }
 
-function printHelp() {
+function printHelp(): void {
   console.log(`env-manager 0.1
 
 Usage:
@@ -31,7 +32,7 @@ Usage:
 Local-first by design: the UI binds to 127.0.0.1 only.`);
 }
 
-function openBrowser(url) {
+function openBrowser(url: string): void {
   const command = process.platform === "darwin"
     ? "open"
     : process.platform === "win32"
@@ -43,7 +44,7 @@ function openBrowser(url) {
   child.unref();
 }
 
-function printScanSummary(scanResult) {
+function printScanSummary(scanResult: ScanResult): void {
   console.log(JSON.stringify({
     root: scanResult.root,
     summary: scanResult.summary,
@@ -55,7 +56,7 @@ function printScanSummary(scanResult) {
   }, null, 2));
 }
 
-function printDoctor(scanResult) {
+function printDoctor(scanResult: ScanResult): void {
   const severityRank = { critical: 0, warning: 1, info: 2 };
   const issues = [...scanResult.issues].sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
   console.log(`Env Manager Doctor: ${issues.length} issue(s) found`);
@@ -67,10 +68,10 @@ function printDoctor(scanResult) {
   if (issues.some((issue) => issue.severity === "critical")) process.exitCode = 2;
 }
 
-async function runWatch(root) {
-  let timer;
+async function runWatch(root: string): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
   let lastFingerprint = "";
-  const run = async () => {
+  const run = async (): Promise<void> => {
     const scanResult = await scanWorkspace({ root });
     const fingerprint = JSON.stringify(scanResult.variables.map((variable) => [
       variable.relativeFilePath,
@@ -87,6 +88,7 @@ async function runWatch(root) {
 
   await run();
   try {
+    // Native recursive watch keeps the CLI lightweight; polling is only a fallback.
     const watcher = fs.watch(root, { recursive: true });
     for await (const event of watcher) {
       if (!event.filename || !String(event.filename).includes(".env")) continue;
@@ -98,7 +100,7 @@ async function runWatch(root) {
   }
 }
 
-export async function runCli(args) {
+export async function runCli(args: string[]): Promise<void> {
   const command = args[0]?.startsWith("-") ? "serve" : args[0] ?? "serve";
   const commandArgs = command === "serve" ? args : args.slice(1);
   const root = path.resolve(readOption(commandArgs, "--root", process.cwd()));

@@ -1,13 +1,33 @@
 import http from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { URL } from "node:url";
 import { exportScan, sanitizeScanResult } from "../core/exporters.js";
 import { scanWorkspace } from "../core/scanner.js";
-import { renderApp } from "./ui.js";
+import { renderApp } from "../ui/index.js";
 
-function sendJson(response, status, payload) {
+interface StartServerOptions {
+  root?: string;
+  port?: number;
+}
+
+interface ServerHandle {
+  host: string;
+  port: number;
+  close: () => Promise<unknown>;
+}
+
+interface RevealRequestBody {
+  id?: string;
+}
+
+interface OpenFileRequestBody {
+  path?: string;
+}
+
+function sendJson(response: ServerResponse, status: number, payload: unknown): void {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
@@ -16,7 +36,7 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-function sendText(response, status, body, contentType = "text/plain; charset=utf-8") {
+function sendText(response: ServerResponse, status: number, body: string, contentType = "text/plain; charset=utf-8"): void {
   response.writeHead(status, {
     "content-type": contentType,
     "cache-control": "no-store",
@@ -25,13 +45,17 @@ function sendText(response, status, body, contentType = "text/plain; charset=utf
   response.end(body);
 }
 
-async function requestBody(request) {
-  const chunks = [];
+async function requestBody(request: IncomingMessage): Promise<string> {
+  const chunks: Buffer[] = [];
   for await (const chunk of request) chunks.push(chunk);
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export async function startServer({ root = process.cwd(), port = 4783 } = {}) {
+function parseJsonBody<T extends object>(raw: string): T {
+  return JSON.parse(raw || "{}") as T;
+}
+
+export async function startServer({ root = process.cwd(), port = 4783 }: StartServerOptions = {}): Promise<ServerHandle> {
   const host = "127.0.0.1";
   const server = http.createServer(async (request, response) => {
     try {
@@ -43,6 +67,7 @@ export async function startServer({ root = process.cwd(), port = 4783 } = {}) {
       }
 
       if (url.pathname === "/api/scan") {
+        // Scan on demand so clicking Refresh reads the latest .env files without a restart.
         sendJson(response, 200, sanitizeScanResult(await scanWorkspace({ root })));
         return;
       }
@@ -60,7 +85,7 @@ export async function startServer({ root = process.cwd(), port = 4783 } = {}) {
       }
 
       if (url.pathname === "/api/reveal") {
-        const body = JSON.parse(await requestBody(request) || "{}");
+        const body = parseJsonBody<RevealRequestBody>(await requestBody(request));
         const scanResult = await scanWorkspace({ root });
         const variable = scanResult.variables.find((entry) => entry.id === body.id);
         if (!variable) {
@@ -72,7 +97,7 @@ export async function startServer({ root = process.cwd(), port = 4783 } = {}) {
       }
 
       if (url.pathname === "/api/open-file") {
-        const body = JSON.parse(await requestBody(request) || "{}");
+        const body = parseJsonBody<OpenFileRequestBody>(await requestBody(request));
         const requestedPath = path.resolve(root, body.path ?? "");
         if (!requestedPath.startsWith(root)) {
           sendJson(response, 400, { error: "Path is outside the scanned root" });

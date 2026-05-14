@@ -12,7 +12,7 @@
     "scan": "node ./bin/env-manager.js scan",
     "doctor": "node ./bin/env-manager.js doctor",
     "test": "npm run build && node --test dist/test/*.js",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && node -e \"import('fs').then(f => { const src = './src/ui'; const dst = './dist/src/ui'; f.cpSync(src, dst, { recursive: true }); })\""
   },
   "keywords": [
     "env",

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Env Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Env Manager</h1>
+        <p id="rootPath">Loading workspace</p>
+      </div>
+
+      <section class="side-section">
+        <div class="side-label">Apps</div>
+        <div class="nav-list" id="appNav"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <h2 id="pageTitle">Secrets</h2>
+          <p id="pageSubtitle">Browse env keys by app and environment.</p>
+        </div>
+        <div class="toolbar">
+          <input class="search" id="searchInput" placeholder="Search key, value, metadata">
+          <select class="select" id="providerFilter">
+            <option value="">All providers</option>
+          </select>
+          <button id="refreshButton">Refresh</button>
+        </div>
+      </header>
+
+      <nav class="env-tabs" id="envTabs"></nav>
+
+      <section class="content">
+        <div class="summary">
+          <div class="metric"><span>Visible keys</span><strong id="visibleCount">0</strong></div>
+          <div class="metric"><span>Selected app</span><strong id="selectedApp">All</strong></div>
+          <div class="metric"><span>Environment</span><strong id="selectedEnv">All</strong></div>
+          <div class="metric"><span>Providers</span><strong id="providerCount">0</strong></div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head">
+            <div>
+              <strong>Environment Variables</strong>
+              <span id="tableHint">Masked values stay local.</span>
+            </div>
+          </div>
+          <div class="table-wrap" id="tableWrap"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

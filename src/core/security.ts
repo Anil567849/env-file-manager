@@ -11,11 +11,18 @@ const SENSITIVE_KEYWORDS = [
   "ACCESS"
 ];
 
-export function fingerprint(value) {
+export interface SensitivityInput {
+  key: string;
+  value?: string;
+  environment?: string;
+}
+
+export function fingerprint(value?: string): string {
   return createHash("sha256").update(value ?? "").digest("hex");
 }
 
-export function maskValue(value = "") {
+export function maskValue(value = ""): string {
+  // Empty values are displayed as NULL in the UI, but remain empty strings internally.
   if (!value) return "";
   if (value.length <= 6) return "*".repeat(value.length);
   const prefix = value.slice(0, Math.min(4, value.length));
@@ -23,9 +30,9 @@ export function maskValue(value = "") {
   return `${prefix}${"*".repeat(Math.min(28, Math.max(8, value.length - prefix.length - suffix.length)))}${suffix}`;
 }
 
-export function estimateEntropy(value = "") {
+export function estimateEntropy(value = ""): number {
   if (!value) return 0;
-  const frequencies = new Map();
+  const frequencies = new Map<string, number>();
   for (const char of value) frequencies.set(char, (frequencies.get(char) ?? 0) + 1);
   let entropy = 0;
   for (const count of frequencies.values()) {
@@ -35,7 +42,7 @@ export function estimateEntropy(value = "") {
   return Number(entropy.toFixed(2));
 }
 
-export function classifySensitivity(variable) {
+export function classifySensitivity(variable: SensitivityInput): "critical" | "medium" | "low" {
   const key = variable.key.toUpperCase();
   const value = variable.value ?? "";
   const environment = variable.environment?.toLowerCase() ?? "";

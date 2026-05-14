@@ -1,14 +1,20 @@
-function csvEscape(value) {
+import type { ScanResult } from "./scanner.js";
+
+export type SanitizedScanResult = Omit<ScanResult, "variables"> & {
+  variables: Array<Omit<ScanResult["variables"][number], "value">>;
+};
+
+function csvEscape(value: unknown): string {
   const stringValue = String(value ?? "");
   if (/[",\n]/.test(stringValue)) return `"${stringValue.replaceAll('"', '""')}"`;
   return stringValue;
 }
 
-export function exportJson(scanResult) {
+export function exportJson(scanResult: ScanResult): string {
   return `${JSON.stringify(sanitizeScanResult(scanResult), null, 2)}\n`;
 }
 
-export function exportCsv(scanResult) {
+export function exportCsv(scanResult: ScanResult): string {
   const rows = [
     ["key", "maskedValue", "provider", "environment", "owner", "repository", "app", "sourceFile", "sensitivity"]
   ];
@@ -28,7 +34,7 @@ export function exportCsv(scanResult) {
   return `${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}\n`;
 }
 
-export function exportMarkdown(scanResult) {
+export function exportMarkdown(scanResult: ScanResult): string {
   const lines = [
     "# Env Manager Scan",
     "",
@@ -67,13 +73,14 @@ export function exportMarkdown(scanResult) {
   return `${lines.join("\n")}\n`;
 }
 
-export function exportScan(scanResult, format = "json") {
+export function exportScan(scanResult: ScanResult, format = "json"): string {
   if (format === "csv") return exportCsv(scanResult);
   if (format === "md" || format === "markdown") return exportMarkdown(scanResult);
   return exportJson(scanResult);
 }
 
-export function sanitizeScanResult(scanResult) {
+export function sanitizeScanResult(scanResult: ScanResult): SanitizedScanResult {
+  // Raw values stay server-side except for the explicit local reveal/copy endpoint.
   return {
     ...scanResult,
     variables: scanResult.variables.map(({ value, ...variable }) => variable)
