@@ -505,7 +505,8 @@ export function renderApp() {
       environment: "",
       provider: "",
       query: "",
-      revealed: new Map()
+      revealed: new Map(),
+      loading: false
     };
 
     const envAliases = {
@@ -545,30 +546,34 @@ export function renderApp() {
       return state.scan ? state.scan.variables : [];
     }
 
-    function filteredVariables() {
+    function matchesFilters(variable, overrides = {}) {
       const query = state.query.trim().toLowerCase();
-      return variables().filter((variable) => {
-        const metadataText = JSON.stringify(variable.metadata || {});
-        const haystack = [
-          variable.key,
-          variable.maskedValue,
-          variable.provider,
-          variable.app,
-          variable.environment,
-          variable.relativeFilePath,
-          metadataText
-        ].join(" ").toLowerCase();
+      const app = Object.hasOwn(overrides, "app") ? overrides.app : state.app;
+      const environment = Object.hasOwn(overrides, "environment") ? overrides.environment : state.environment;
+      const metadataText = JSON.stringify(variable.metadata || {});
+      const haystack = [
+        variable.key,
+        variable.maskedValue,
+        variable.provider,
+        variable.app,
+        variable.environment,
+        variable.relativeFilePath,
+        metadataText
+      ].join(" ").toLowerCase();
 
-        return (!state.app || variable.app === state.app)
-          && (!state.environment || normalizedEnv(variable.environment) === state.environment)
-          && (!state.provider || variable.provider === state.provider)
-          && (!query || haystack.includes(query));
-      });
+      return (!app || variable.app === app)
+        && (!environment || normalizedEnv(variable.environment) === environment)
+        && (!state.provider || variable.provider === state.provider)
+        && (!query || haystack.includes(query));
+    }
+
+    function filteredVariables() {
+      return variables().filter((variable) => matchesFilters(variable));
     }
 
     function countByApp() {
       const counts = new Map();
-      for (const variable of variables()) {
+      for (const variable of variables().filter((item) => matchesFilters(item, { app: "" }))) {
         counts.set(variable.app, (counts.get(variable.app) || 0) + 1);
       }
       return counts;
@@ -576,7 +581,7 @@ export function renderApp() {
 
     function countByEnv() {
       const counts = new Map();
-      for (const variable of variables()) {
+      for (const variable of variables().filter((item) => matchesFilters(item, { environment: "" }))) {
         const env = normalizedEnv(variable.environment);
         counts.set(env, (counts.get(env) || 0) + 1);
       }
@@ -586,7 +591,8 @@ export function renderApp() {
     function renderApps() {
       const counts = countByApp();
       const apps = Array.from(counts.keys()).sort();
-      const items = [["", "All apps", variables().length], ...apps.map((app) => [app, app, counts.get(app)])];
+      const total = variables().filter((variable) => matchesFilters(variable, { app: "" })).length;
+      const items = [["", "All apps", total], ...apps.map((app) => [app, app, counts.get(app)])];
 
       $("appNav").innerHTML = items.map(([value, label, count]) =>
         '<button class="nav-button ' + (state.app === value ? "active" : "") + '" data-app="' + escapeHtml(value) + '">' +
@@ -609,7 +615,8 @@ export function renderApp() {
         const right = envOrder.indexOf(b);
         return (left === -1 ? 99 : left) - (right === -1 ? 99 : right) || a.localeCompare(b);
       });
-      const items = [["", "All envs", variables().length], ...envs.map((env) => [env, envLabel(env), counts.get(env)])];
+      const total = variables().filter((variable) => matchesFilters(variable, { environment: "" })).length;
+      const items = [["", "All envs", total], ...envs.map((env) => [env, envLabel(env), counts.get(env)])];
 
       $("envTabs").innerHTML = items.map(([value, label, count]) =>
         '<button class="env-tab ' + (state.environment === value ? "active" : "") + '" data-env="' + escapeHtml(value) + '">' +
@@ -634,6 +641,10 @@ export function renderApp() {
 
     function isUrl(value) {
       return /^https?:\\/\\//i.test(String(value || ""));
+    }
+
+    function displayValue(value) {
+      return value === "" ? "NULL" : value;
     }
 
     function metadataLines(variable) {
@@ -677,10 +688,10 @@ export function renderApp() {
       $("tableWrap").innerHTML =
         '<table><thead><tr><th>Key</th><th>Value</th><th>Env</th><th>Metadata</th><th></th></tr></thead><tbody>' +
         rows.map((variable) => {
-          const visibleValue = state.revealed.get(variable.id) || variable.maskedValue;
+          const visibleValue = state.revealed.has(variable.id) ? state.revealed.get(variable.id) : variable.maskedValue;
           return '<tr>' +
             '<td><code class="key-cell">' + escapeHtml(variable.key) + '</code></td>' +
-            '<td class="value-cell"><code>' + escapeHtml(visibleValue) + '</code></td>' +
+            '<td class="value-cell"><code>' + escapeHtml(displayValue(visibleValue)) + '</code></td>' +
             '<td><span class="badge">' + escapeHtml(envLabel(variable.environment)) + '</span></td>' +
             '<td><div class="meta">' + metadataLines(variable) + '</div></td>' +
             '<td><div class="actions">' +
@@ -742,24 +753,32 @@ export function renderApp() {
     }
 
     async function loadScan() {
+      if (state.loading) return;
+      state.loading = true;
       $("tableHint").textContent = "Scanning workspace...";
-      const response = await fetch("/api/scan");
-      state.scan = await response.json();
-      render();
-      $("tableHint").textContent = "Masked values stay local.";
+      try {
+        const response = await fetch("/api/scan");
+        state.scan = await response.json();
+        render();
+        $("tableHint").textContent = "Masked values stay local.";
+      } catch (error) {
+        $("tableHint").textContent = "Scan failed. Try refresh.";
+      } finally {
+        state.loading = false;
+      }
     }
 
     $("searchInput").addEventListener("input", (event) => {
       state.query = event.target.value;
-      renderTable();
+      render();
     });
 
     $("providerFilter").addEventListener("change", (event) => {
       state.provider = event.target.value;
-      renderTable();
+      render();
     });
 
-    $("refreshButton").addEventListener("click", loadScan);
+    $("refreshButton").addEventListener("click", () => loadScan());
 
     loadScan();
   </script>

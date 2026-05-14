@@ -34,15 +34,6 @@ function parseAssignment(line) {
   return { key: match[1], rawValue: match[2] ?? "" };
 }
 
-const SUPPORTED_METADATA_KEYS = new Set([
-  "provider",
-  "owner",
-  "account",
-  "dashboard",
-  "createdAt",
-  "rotationPolicy"
-]);
-
 function coerceMetadataValue(value) {
   return parseScalar(value);
 }
@@ -75,11 +66,7 @@ export function parseEnvContent(content, filePath = "") {
     const metadataComment = trimmed.match(/^#\s*@([A-Za-z][A-Za-z0-9_-]*)\s+(.+)$/);
     if (metadataComment) {
       const key = metadataComment[1];
-      if (SUPPORTED_METADATA_KEYS.has(key)) {
-        pendingCommentMetadata[key] = coerceMetadataValue(metadataComment[2]);
-      } else {
-        pendingCommentMetadata = {};
-      }
+      pendingCommentMetadata[key] = coerceMetadataValue(metadataComment[2]);
       continue;
     }
 

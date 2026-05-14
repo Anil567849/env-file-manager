@@ -86,17 +86,16 @@ Env Manager supports metadata only through `# @field value` comments placed dire
 # @dashboard https://platform.openai.com/api-keys
 # @createdAt 2026-05-13
 # @rotationPolicy 90 days
+# @email backend@example.com
 OPENAI_API_KEY=sk-...
 ```
 
-Supported metadata fields:
+Metadata parsing rules:
 
-- `provider`: OpenAI, Stripe, AWS, Supabase, Resend, etc.
-- `owner`: person or team responsible for the key
-- `account`: provider account where the key was created
-- `dashboard`: exact link to rotate or delete the key
-- `createdAt`: when the key was added
-- `rotationPolicy`: how often it should be rotated
+- Any comment matching `# @key value` becomes metadata for the next env key.
+- `key` is the first word after `@`.
+- `value` is everything after that key until the end of the line.
+- Metadata resets after it is attached to one env key.
 
 In the UI, metadata is rendered one item per line. URL metadata becomes a `click here` link so rotation is one click away.
 

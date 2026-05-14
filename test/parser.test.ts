@@ -25,7 +25,7 @@ PUBLIC_URL="https://example.com#anchor"
   assert.equal(entries[1].value, "https://example.com#anchor");
 });
 
-test("ignores unsupported metadata formats", () => {
+test("ignores unsupported companion and section metadata formats", () => {
   const entries = parseEnvContent(`
 STRIPE_SECRET_KEY=sk_live_123
 STRIPE_SECRET_KEY__META={"provider":"Stripe","owner":"billing@example.com"}
@@ -42,5 +42,19 @@ OPENAI_API_KEY=sk-test-value
   assert.equal(entries[0].key, "STRIPE_SECRET_KEY");
   assert.deepEqual(entries[0].metadata, {});
   assert.equal(entries[1].key, "OPENAI_API_KEY");
-  assert.deepEqual(entries[1].metadata, {});
+  assert.equal(entries[1].metadata.Anil, "Kumar");
+});
+
+test("parses arbitrary metadata comment keys", () => {
+  const entries = parseEnvContent(`
+# @provider CloudFlare
+# @email anil.cloudflare@gmail.com
+# @notes owned by infra team until migration
+NEXT_PUBLIC_R2_PUBLIC_URL=https://example.r2.dev
+`, ".env");
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].metadata.provider, "CloudFlare");
+  assert.equal(entries[0].metadata.email, "anil.cloudflare@gmail.com");
+  assert.equal(entries[0].metadata.notes, "owned by infra team until migration");
 });
