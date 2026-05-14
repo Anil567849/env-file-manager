@@ -36,7 +36,7 @@ This package gives you a simple local UI for seeing that structure across multip
 From npm:
 
 ```bash
-npm install -D env-file-manager
+npm i -D env-file-manager
 ```
 
 Local development from this repo:
