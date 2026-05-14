@@ -5,7 +5,7 @@ A small local-first dashboard for browsing `.env` files across apps and environm
 Env File Manager scans a repo or monorepo, groups env variables by app and environment, masks values by default, and shows supported metadata like owner, provider, dashboard link, account, rotation policy, and source file.
 
 <img width="1920" height="1080" alt="Untitled design" src="https://github.com/user-attachments/assets/0ea2b896-b996-4b24-ab7b-ff8c8defa91e" />
-
+ 
 ## Why This Exists
 
 Most teams eventually end up with env sprawl:
