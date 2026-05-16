@@ -105,22 +105,16 @@ Metadata parsing rules:
 
 In the UI, metadata is rendered one item per line. URL metadata becomes a `click here` link so rotation is one click away.
 
-## Demo Workspace
+## Supported Workspace Structure
 
-This repo was tested with a dummy monorepo at:
+Env File Manager is designed to work seamlessly with monorepos. For example, if your repository looks like this:
 
-```bash
-/Users/anilkumar/Desktop/env-vault-demo-workspace
-```
+- `apps/server/`
+- `apps/frontend-web/`
+- `apps/mobile/`
+- `apps/admin/`
 
-It includes:
-
-- `apps/server`
-- `apps/frontend-web`
-- `apps/mobile`
-- `apps/admin`
-
-Each app has multiple `.env.*` files so you can see app navigation plus `local`, `dev`, `staging`, and `prod` env tabs.
+And each app has multiple `.env.*` files, the dashboard will automatically group them, providing app navigation and environment tabs (e.g., `local`, `dev`, `staging`, and `prod`).
 
 ## Security
 
