@@ -33,11 +33,17 @@ This package gives you a simple local UI for seeing that structure across multip
 
 ## Install
 
-From npm:
+Install it as a dev dependency in the root of the project you want to scan:
+
+```bash
+cd /path/to/your-project
+```
 
 ```bash
 npm i -D env-file-manager
 ```
+
+For monorepos, install it at the monorepo root so it can scan all apps and packages.
 
 Local development from this repo:
 
@@ -48,13 +54,13 @@ npm start
 
 ## Usage
 
-Start the dashboard in the current project:
+Start the dashboard from your project root:
 
 ```bash
 npx env-file-manager
 ```
 
-Scan another project:
+By default, Env File Manager scans the current working directory. If you run it from somewhere else, pass the project path explicitly:
 
 ```bash
 npx env-file-manager --root /path/to/project
@@ -99,22 +105,16 @@ Metadata parsing rules:
 
 In the UI, metadata is rendered one item per line. URL metadata becomes a `click here` link so rotation is one click away.
 
-## Demo Workspace
+## Supported Workspace Structure
 
-This repo was tested with a dummy monorepo at:
+Env File Manager is designed to work seamlessly with monorepos. For example, if your repository looks like this:
 
-```bash
-/Users/anilkumar/Desktop/env-vault-demo-workspace
-```
+- `apps/server/`
+- `apps/frontend-web/`
+- `apps/mobile/`
+- `apps/admin/`
 
-It includes:
-
-- `apps/server`
-- `apps/frontend-web`
-- `apps/mobile`
-- `apps/admin`
-
-Each app has multiple `.env.*` files so you can see app navigation plus `local`, `dev`, `staging`, and `prod` env tabs.
+And each app has multiple `.env.*` files, the dashboard will automatically group them, providing app navigation and environment tabs (e.g., `local`, `dev`, `staging`, and `prod`).
 
 ## Security
 

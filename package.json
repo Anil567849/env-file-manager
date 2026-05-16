@@ -1,6 +1,6 @@
 {
   "name": "env-file-manager",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Local-first dashboard for browsing .env files across apps, repos, and monorepos.",
   "type": "module",
   "bin": {
